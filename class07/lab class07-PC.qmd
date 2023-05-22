@@ -1,0 +1,268 @@
+---
+title:"Class 7: Clustering and PCA"
+author:"Patricia Chen A16138722"
+date:"04/27/23"
+format:pdf
+---
+
+# Clustering
+
+First let's makeup some data to cluster so we can get a feel for these methods and how to work with them. We can use the "rnorm()" function to get random numbers from a normal distribution around a given 'mean'.
+
+```{r}
+hist(rnorm(5000,mean=3))
+#mean and sd has a default value, so we should worry most about the one doesn't (n)
+```
+
+Let's get 30 points with a mean of 3 and another 30 with a mean of -3.
+
+```{r}
+tmp<-c(rnorm(30, mean=3),rnorm(30, mean=-3))
+tmp
+
+#cbind()
+rev(c(rnorm(30, mean=3), rnorm(30, mean=-3)))  # reverses 
+
+```
+
+```{r}
+x <- cbind(x=tmp, y=rev(tmp))
+plot(x)
+```
+
+## K means clustering
+
+Very popular clustering method that we can use with the 'kmeans()' function in base R, especially for big data sets.
+```
+
+```{r}
+#kmeans() need 2 inputs
+
+km<- kmeans(x,centers=2)
+km
+
+# centers = number of clusters
+# cluster means = the center points of the clusters
+# K-means clustering with 2 clusters of size 30, 30
+```
+
+```{r}
+km$size
+```
+
+```{r}
+# Generate some example data for clustering
+
+tmp<-c(rnorm(30, -3),rnorm(30,-3))
+x<-data.frame(x=tmp, y=rev(tmp))
+
+#plot(x)
+
+km<- kmeans(x,centers=2, nstart=20)
+km
+```
+
+
+> Q. How many points are in each cluster?
+
+```{r}
+km$size
+```
+
+>Q. How many cluster centers? 
+
+```{r}
+km$centers
+```
+
+> Q. How do we get to cluster membership/assignment?
+
+```{r}
+km$cluster
+```
+
+```{r}
+
+mycols<-c(1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2)
+
+plot(x,col=1,2)
+plot(x,col=mycols)
+
+
+#Can color by name eg. col="red"
+#Can color by number eg.col=1
+#mycols<-c(1,2)
+
+plot(x,col=mycols)
+```
+
+>Q. Plot x colored by the kmeans cluster assignment and add cluster centers as blue points.
+
+```{r}
+#my cols <- km$cluster
+plot(x,col=km$cluster)
+points(km$centers, col="blue",pch=15,cex=3)
+
+```
+
+> Q Let's cluster into 3 groups or some 'x' data and make a plot.
+
+```{r}
+km <-kmeans(x,centers=3)
+plot(x, col=km$cluster)
+
+```
+
+# Hierarchical Cluster 
+
+We can use the 'hcluster () function for Hierarchical Clustering. 
+Unlike 'kmean()', were we could just pass in our data as input, we need to give 'hclust()' a "distance matrix".
+
+We will use the 'dist()' function to start with:
+
+```{r}
+d <- dist(x) # a distance matrix
+hc <- hclust(d)
+hc
+
+```
+
+```{r}
+plot(hc)
+
+```
+
+I can now "cut" my tree with the 'cutree()' to yield a cluster membership vector.
+
+```{r}
+grps <- cutree(hc,h=8)
+grps
+```
+
+You can also tell 'cutree()' to cut where it yields "k" group.
+
+```{r}
+cutree(hc, k=2) 
+#Cut into 2 groups. This is equivalent to the previous cutree(hc, h=8)
+```
+
+```{r}
+plot(x, col=grps)
+
+```
+
+
+# Principal Component Analysis (PCA): reveal the most important structure
+
+# Principal components are new low dimensional axis or surfaces closest to the observations
+# The data have msx vairance along PC1 (then PC2) which make the first few PCs useful for visualizing our data
+
+```
+
+# Class 7 Lab
+
+# 1. PCA of UK food data
+
+```{r}
+
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url, row.names =1) 
+x
+```
+
+# Use this method instead o fx <-x[,1] head(x) 
+
+>Q1. How many rows and columns are in your new data frame named x? What R functions could you use to answer this question?
+
+```{r}
+dim(x)
+
+```
+
+>Q2. Which approach to solving the row-names problem mentioned above do you prefer and why? Is one apprach more robost than another under certian circumstance?
+
+>Answer: The apprach more accuarate is the x <- read.csv(url, row.names =1) function 
+instead of the function
+fx <-x[,1] 
+head(x) 
+
+>This is because the second function will lead to lost in row or columns when returned, while the first function returns all rows and columns and is more robost. So I would choose the first function for solving the row-names problem.
+
+
+> Q3. Changing what optional argument in the above barplot() function results in the following plot?
+
+> Answer: The beside function is changed to false in the barplot() code.
+
+# Spotting major differences and trends
+```{r}
+barplot(as.matrix(x), beside=T, col=rainbow(nrow(x)))
+```
+
+#New Plot
+```{r}
+barplot(as.matrix(x), beside=F, col=rainbow(nrow(x)))
+
+```
+
+> Q5: Generating all pairwise plots may help somewhat. Can you make sense of the following code and resulting figure? What does it mean if a given point lies on the diagonal for a given plot?
+
+>Answer: The figure shows each colored dot as a food category, and if a point lies on the diagonal line, it means that the countries in the x and y axis consumed the same amount for that food category. Points above the diagonal line means that the countries of the y axis consumes more food of a particular category. 
+
+```{r}
+pairs(x, col=rainbow(10), pch=16)
+```
+
+The main PCA function in base R is called the 'prcomp()', and it expects the transpose of our data.
+
+> Q6. What is the main differences between N. Ireland and the other countries of the UK in terms of this data-set?
+
+> Answer: The main differences between N Irland and other countries of UK is that there is more orange dot consumed in England compared to that of Irland.
+
+> PCA to the rescue
+
+```{r}
+#Use the prcomp() PCA function 
+pca <- prcomp( t(x) )
+summary(pca)
+```
+
+> Q7. Complete the code below to generate a plot of PC1 vs PC2. The second line adds text labels over the data points.
+
+> Answers:
+
+```{r}
+# Plot PC1 vs PC2
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2", xlim=c(-270,500))
+text(pca$x[,1], pca$x[,2], colnames(x))
+
+```
+
+> Q8. Customize your plot so that the colors of the country names match the colors in our UK and Ireland map and table at start of this document.
+
+> Answers:
+
+
+> The main PCA function in base R is called 'prcomp()' it expects the transpose of our data
+
+```{r}
+pca<-prcomp(t(x))
+summary (pca)
+```
+
+```{r}
+attributes(pca) # want x
+```
+
+```{r}
+pca$x # where each country lies on the new axis
+```
+
+# Plot PC1 vs PC2
+
+```{r}
+
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2", xlim=c(-270,500)) 
+text(pca$x[,1], pca$x[,2],colnames(x), col=c("darkorange","darkred","darkblue","darkgreen",pch=16))
+
+
+```
