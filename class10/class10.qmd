@@ -1,0 +1,162 @@
+---
+title: "Class10"
+author: "Patricia Chen A16138722"
+format: pdf
+editor: visual
+---
+
+# 4. Comparative structure analysis of Adenylate Kinase (ADK)
+
+ADK is am important drug target and we would love to know how it works ie. molecular mechanism. There has been a lot of work done on this protein due to it's importance inclusing lots of crustal structures.
+
+We will begin with getting an example ADK sequence from the database, we will then use this to find all ADK structures in the pDB
+
+## Install packages in the R console NOT your Rmd/Quarto file
+
+```{r}
+
+#install.packages("bio3d")
+#install.packages("devtools")
+#install.packages("BiocManager")
+
+#BiocManager::install("msa")
+#devtools::install_bitbucket("Grantlab/bio3d-view")
+
+```
+
+> Q10. Which of the packages above is found only on BioConductor and not CRAN? 
+> Answer: MSA
+
+> Q11. Which of the above packages is not found on BioConductor or CRAN?:
+> Answer: The bottom package, bio3d-view, is not found on the BioConductor or CRAN.
+
+> Q12. True or False? Functions from the devtools package can be used to install packages from GitHub and BitBucket?
+> Answer: True.
+
+## Search and retrieve ADK structures
+
+```{r}
+library(bio3d)
+aa <- get.seq("1ake_A")
+
+aa
+```
+
+We can now run BLAST
+
+```{r}
+#b<- blast.pdb(aa)
+```
+
+```{r}
+#hits<-plot(b)
+```
+
+Let's see what is in our 'hits' object
+```{r}
+#hits$pdb.id
+
+```
+
+hits$pdb.id
+
+
+> Q13. How many amino acids are in this sequence, i.e. how long is this sequence? 
+> Answer: There are 214 amino acids in this sequence.
+
+
+```{r}
+# Blast or hmmer search 
+#b <- blast.pdb(aa)
+
+# Plot a summary of search results
+#hits <- plot(b)
+
+# List out some 'top hits'
+#head(hits$pdb.id)
+
+hits <- NULL
+hits$pdb.id <- c('1AKE_A','6S36_A','6RZE_A','3HPR_A','1E4V_A','5EJE_A','1E4Y_A','3X2S_A','6HAP_A','6HAM_A','4K46_A','3GMT_A','4PZL_A')
+```
+
+We can now use function get.pdb() and pdbslit() to fetch and parse the identified structures.
+
+```{r}
+# Download releated PDB files - Skipping downloads (already exists)
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+
+```
+
+# Alighment: Align and superpose structures
+Next we will use the pdbaln() function to align and also optionally fit (i.e. superpose) the identified PDB structures.
+Now I want to align and supersose theses structures which are all over the place
+
+```{r}
+
+# Align releated PDBs
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+
+```
+
+Let's have a look at our 'pdbs' object
+```{r}
+pdbs
+```
+
+Now we have our aligned and superposed structures we can perform all sorts of analysis on them. Let's do PCA..
+
+
+```{r}
+# Vector containing PDB codes for figure axis
+#ids <- basename.pdb(pdbs$id)
+
+# Draw schematic alignment
+#plot(pdbs, labels=ids)
+```
+
+## Annotate collected PDB structures
+
+```{r}
+#anno <- pdb.annotate(ids)
+#unique(anno$source)
+#anno
+```
+
+Principal component analysis
+
+```{r}
+# Perform PCA
+pc.xray <- pca(pdbs)
+plot(pc.xray)
+```
+
+
+Results of PCA on ADK X-ray structure. Each dot represents one PDB structure.
+
+We can cluster the structures by RMSD (or any other methods).
+
+```{r}
+# Calculate RMSD, measuring the distance b/w clusters
+rd <- rmsd(pdbs)
+
+# Structure-based clustering
+hc.rd <- hclust(dist(rd))
+grps.rd <- cutree(hc.rd, k=3)
+
+
+#plot(pc.xray, 1:2, col=grps)
+plot(pc.xray, 1:2, col="grey50", bg=grps.rd, pch=21, cex=1)
+```
+
+# 5. Optional further visualization
+
+We can make a movie - also called a trajectory of the major differences (ie. structural displacement) of ADK
+
+```{r}
+# Visualize first principal component
+pc1 <- mktrj(pc.xray, pc=1, file="pc_1.pdb")
+```
+
+
+
+
