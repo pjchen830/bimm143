@@ -1,0 +1,296 @@
+---
+title: "Class 13: Pathway Analysis from RNA-Seq Results"
+author: "Patricia Chen A16138722"
+format: pdf
+editor: visual
+---
+
+## Section 1. Differential Expression Analysis
+
+```{r}
+library(DESeq2)
+
+```
+
+```{r}
+metaFile <- "GSE37704_metadata.csv"
+countFile <- "GSE37704_featurecounts.csv"
+
+# Import metadata and take a peak
+colData = read.csv(metaFile, row.names=1)
+head(colData)
+```
+
+```{r}
+# Import countdata
+countData = read.csv(countFile, row.names=1)
+head(countData)
+```
+
+> Q1. Complete the code below to remove the troublesome first column from countData
+>
+> Answer:
+
+```{r}
+
+# Note we need to remove the odd first $length col
+countData <- as.matrix(countData[,-1])
+head(countData)
+
+```
+
+> Q2. Complete the code below to filter countData to exclude genes (i.e. rows) where we have 0 read count across all samples (i.e. columns). Tip: What will rowSums() of countData return and how could you use it in this context?
+>
+> Answer:
+
+```{r}
+# Filter count data where you have 0 read count across all samples.
+countData = countData[rowSums(countData)>0, ]
+head(countData)
+```
+
+## Running DESeq2
+
+Lets setup the DESeqDataSet object required for the DESeq() function and then run the DESeq pipeline.
+
+```{r}
+dds = DESeqDataSetFromMatrix(countData=countData,
+                             colData=colData,
+                             design=~condition)
+dds = DESeq(dds)
+
+dds
+```
+
+```{r}
+res = results(dds, contrast=c("condition", "hoxa1_kd", "control_sirna"))
+
+```
+
+> Q3. Call the summary() function on your results to get a sense of how many genes are up or down-regulated at the default 0.1 p-value cutoff.
+
+> Answer: At default 0.1 p-value cutoff, 4349 genes or 27% of genes are up-regulated, and 4396 genes or 28% of genes are down regulated according to the yielded results.
+
+```{r}
+summary(res)
+```
+
+## Volcono plot
+
+```{r}
+plot( res$log2FoldChange, -log(res$padj) )
+```
+
+> Q4. Improve this plot by completing the below code, which adds color and axis labels
+
+> Answer:
+
+```{r}
+# Make a color vector for all genes
+mycols <- rep("gray", nrow(res) )
+
+# Color red the genes with absolute fold change above 2
+mycols[ abs(res$log2FoldChange) > 2 ] <- "red"
+
+# Color blue those with adjusted p-value less than 0.01
+#  and absolute fold change more than 2
+inds <- (res$padj<0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+
+plot( res$log2FoldChange, -log(res$padj), col=mycols, xlab="Log2(FoldChange)", ylab="-Log(P-value)" )
+```
+
+## Adding gene annotation
+
+> Q5. Use the mapIDs() function multiple times to add SYMBOL, ENTREZID and GENENAME annotation to our results by completing the code below.
+>
+> Answer:
+
+```{r}
+#if (!require("BiocManager", quietly = TRUE))
+   # install.packages("BiocManager")
+
+#BiocManager::install("org.Hs.eg.db")
+
+library("AnnotationDbi")
+library("org.Hs.eg.db")
+
+columns(org.Hs.eg.db)
+
+res$symbol = mapIds(org.Hs.eg.db,
+                    keys= row.names(res), 
+                    keytype="ENSEMBL",
+                    column="SYMBOL",
+                    multiVals="first")
+
+res$entrez = mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column="ENTREZID",
+                    multiVals="first")
+
+res$name =   mapIds(org.Hs.eg.db,
+                    keys=row.names(res),
+                    keytype="ENSEMBL",
+                    column= "GENENAME",
+                    multiVals="first")
+
+head(res, 10)
+```
+
+> Q6. Finally for this section let's reorder these results by adjusted p-value and save them to a CSV file in your current project directory.
+>
+> Answer: File was successfully saved to the "class13" project directory.
+
+```{r}
+res = res[order(res$pvalue),]
+write.csv(res, file="deseq_results.csv") 
+```
+
+# Section 2. Pathway Analysis
+
+## KEGG pathways
+
+```{r}
+# Run in your R console (i.e. not your Rmarkdown doc!)
+#BiocManager::install( c("pathview", "gage", "gageData") )
+
+# For old vesrsions of R only (R < 3.5.0)!
+#source("http://bioconductor.org/biocLite.R")
+#biocLite( c("pathview", "gage", "gageData") )
+
+library(pathview)
+```
+
+```{r}
+library(gage)
+library(gageData)
+
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+# Examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+Let's run the gage pathway analysis.
+
+```{r}
+# Get the results
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+
+attributes(keggres)
+
+```
+
+```{r}
+# Look at the first few down (less) pathways
+head(keggres$less)
+       
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+
+```
+
+![HSA04110 Cell Cycle](hsa04110.pathview.png)
+
+```{r}
+# A different PDF based output of the same data
+pathview(gene.data=foldchanges, pathway.id="hsa04110", kegg.native=FALSE)
+
+```
+
+```{r}
+## Focus on top 5 upregulated pathways here for demo purposes only
+keggrespathways <- rownames(keggres$greater)[1:5]
+
+# Extract the 8 character long IDs part of each string
+keggresids = substr(keggrespathways, start=1, stop=8)
+keggresids
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
+
+```
+
+![Steroid Hormone Biosynthesis Pathway](hsa00140.pathview.png)
+
+![Lysosome Pathway](hsa04142.pathview.png)
+
+![Notch Signaling Pathway](hsa04330.pathview.png)
+
+![Jak-Stat Signaling Pathway](hsa04630.pathview.png)
+
+![Hematopoietic Cell Lineage](hsa04640.pathview.png)
+
+> Q7. Can you do the same procedure as above to plot the pathview figures for the top 5 down-reguled pathways?
+>
+> Answer: Yes, I am able to do the same procedure to plot the pathview figures for the top 5 down-regulated pathways.
+
+```{r}
+#Top 5 down-regulated pathways
+keggrespathways.down <- rownames(keggres$less)[1:5]
+
+# Extract the 8 character long IDs part of each string
+keggresids.down = substr(keggrespathways.down, start=1, stop=8)
+keggresids.down
+
+```
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id=keggresids.down, species="hsa")
+```
+
+# Section 3. Gene Ontology (GO)
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+lapply(gobpres, head)
+```
+
+# Section 4. Reactome Analysis
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+```
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+> Q8. What pathway has the most significant "Entities p-value"? Do the most significant pathways listed match your previous KEGG results? What factors could cause differences between the two methods?
+
+> Answer: The pathway with the most significant "Entities p-value" is the Cell Cycle, Mitotic pathway, with the smallest entities p-value of 1.21E-3. Most significant pathways listed does not appear to match my previous KEGG results. The difference between the two methods may be caused by different methods for analyzing the data, where the GO online analyzes the biological processes instead of the pathways, yielding different analyzed results.
+
+# Section 5. GO online (OPTIONAL)
+
+> Q9: What pathway has the most significant "Entities p-value"? Do the most significant pathways listed match your previous KEGG results? What factors could cause differences between the two methods?
+
+> Answer: The pathway with most significant "Entities p-value" is the detection of chemical stimulus involved in the sensory perception. This does not match my previous KEGG results. The difference could be caused by the GO online analyzes the biological processes instead of the pathways, yielding different analyzed results.
+
+## Session Information
+
+```{r}
+sessionInfo()
+
+```

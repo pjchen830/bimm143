@@ -1,0 +1,52 @@
+---
+title: "Class 14: Introduction to Git and GitHub"
+author: "Patricia Chen A16138722"
+format: pdf
+editor: visual
+---
+
+## Create a Personal Access Token (PAT) on GitHub
+
+```{r}
+#install.packages("usethis")
+#library(usethis)
+#create_github_token()
+
+```
+
+## Store Personal Access Token to Connect RStudio and GitHub
+
+Now that you've created a Personal Access Token, we need to store it so that RStudio can access it and know to connect to your GitHub account. The gitcreds_set() function from the gitcreds package will help you here.
+
+```{r}
+install.packages("gitcreds")
+library(gitcreds)
+gitcreds_set()
+
+# You’ll enter your GitHub username and the Personal Access Token as your password (NOT your GitHub password). Just paste the PAT (token) you copied from the GitHub website above. Once you’ve done all of this, you have connected RStudio to GitHub!
+
+
+```
+
+## 5. Create a GitHub repository
+
+## 6. Clone your repository using RStudio
+
+## 7. RStudio: New Project
+
+## 8. Inspect your local repo
+
+## 9. Sync from RStudio (local) to GitHub (remote)
+
+## 10. Add previous class projects to your GitHub class repo.
+
+## 11. Committing - how often? Tracking changes in your files
+
+## About this document
+
+Here we use the sessionInfo() function to report on our R systems setup at the time of document execution.
+
+```{r}
+sessionInfo()
+
+```

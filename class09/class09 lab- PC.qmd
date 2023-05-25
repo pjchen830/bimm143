@@ -1,0 +1,175 @@
+---
+title: "Class 09: Structual Bioinformatics"
+author: "Patricia Chen A16138722"
+format: pdf
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+## 1: Introduction to the RCSB Protein Data Bank (PDB)
+
+# PDB statistics
+
+The PDB is the main database for structural information on biomolecules.
+
+Download a CSV file from the PDB site (accessible from "Analyze" \> "PDB Statistics" \> "by Experimental Method and Molecular Type". Move this CSV file into your RStudio project and use it to answer the following questions:
+
+```{r}
+db <- read.csv("Data Export Summary.csv", row.names = 1)
+db
+
+```
+
+> Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+```{r}
+
+gsub(",","",db$Total)
+gsub("","",db$EM)
+gsub(",","",db$X.ray)
+
+sum(as.numeric(gsub(",","",db$X.ray)))
+
+```
+
+I'm doing the same thing over and over to write a function.
+
+```{r}
+# I will work with x as input
+
+  sum_comma <-function(x){
+  
+    # Substitute the comma and convert to numeric
+  
+  sum(as.numeric(gsub(",","",x)))
+
+}
+```
+
+For Xray:
+
+```{r}
+sum_comma(db$X.ray)/sum_comma(db$Total)
+```
+
+> Answer:0.859 or 85.9% percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+For EM:
+
+```{r}
+round(sum_comma(db$EM)/sum_comma(db$Total),2) #should yield 0.07
+
+```
+
+> Q2: What proportion of structures in the PDB are protein?
+
+The proportion of protein structures in the PDB is yielded as 0.87 or 87% after rounding.
+
+```{r}
+round(sum_comma(db$Total[1])/sum_comma(db$Total)) 
+
+```
+
+> Q3: SKIPPED
+
+
+## 2. Visualizing the HIV-1 protease structure
+
+> Q4: Water molecules normally have 3 atoms.
+> Why do we see just one atom per water molecule in this structure?
+
+> Answer: We only see one atom molecule in the structure because the hydrogen atom with atomic mass of 1 u is too small to be displayed on the structure.
+> So the two hydrogen atoms in the water molecule is hidden and only the one oxygen atom is displayed, which is what we observed.
+
+> Q5: There is a critical "conserved" water molecule in the binding site.
+> Can you identify this water molecule?
+> What residue number does this water molecule have?
+
+> Answer: Yes, I was able to identify the critical "conserved" water molecule.
+> This molecule is at the position Asp (D25), with the residue number of this water molecule is HOH308.
+
+Now you should be able to produce an image similar or even superior to Figure 2 and save it to an image file.
+
+> Q6: Generate and save a figure clearly showing the two distinct chains of HIV-pro tease along with the ligand.
+> You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend "Ball & Stick" for these side-chains).
+> Add this figure to your Quarto document.
+
+> Answer: Insert captured image from molstar for question 6.
+>
+> ![HIV-PR structure from MERK with a bound drug](1HSG.png)
+
+> Discussion Topic: Can you think of a way in which indinavir, or even larger ligands and substrates, could enter the binding site?
+
+## 3. Introduction to Bio3D in R
+
+# Working with Structures in R
+
+```{r}
+library(bio3d)
+
+pdb <- read.pdb("1hsg")
+pdb
+```
+
+> Q7: How many amino acid residues are there in this pdb object?
+> Answer: There are 198 amino acid residues in the pdb object.
+
+> Q8: Name one of the two non-protein residues?
+> Answer: The name of the two non-protein residues is called HOH.
+
+> Q9: How many protein chains are in this structure?
+> Answer: There are two protein chains in this structure.
+
+```{r}
+attributes(pdb)
+head(pdb$atom)
+
+```
+
+## 2.Predicting functional motions of a single structure
+
+Read on ADK structure
+
+```{r}
+adk <- read.pdb("6s36")
+adk
+
+```
+
+Perform a prediction of flexibility with a technique called NMA (normal mode )
+
+```{r}
+m <- nma(adk)
+plot(m)
+```
+
+Write out a "movie" (trajectory) of the motion for viewing in MOLstar
+
+```{r}
+mktrj(m, file="adk_m7.pdb")
+
+
+```
+
+```{r}
+##  Call:  read.pdb(file = "6s36")
+## 
+##    Total Models#: 1
+##      Total Atoms#: 1898,  XYZs#: 5694  Chains#: 1  (values: A)
+## 
+##      Protein Atoms#: 1654  (residues/Calpha atoms#: 214)
+##      Nucleic acid Atoms#: 0  (residues/phosphate atoms#: 0)
+## 
+##      Non-protein/nucleic Atoms#: 244  (residues: 244)
+##      Non-protein/nucleic resid values: [ CL (3), HOH (238), MG (2), NA (1) ]
+## 
+##    Protein sequence:
+##       MRIILLGAPGAGKGTQAQFIMEKYGIPQISTGDMLRAAVKSGSELGKQAKDIMDAGKLVT
+##       DELVIALVKERIAQEDCRNGFLLDGFPRTIPQADAMKEAGINVDYVLEFDVPDELIVDKI
+##       VGRRVHAPSGRVYHVKFNPPKVEGKDDVTGEELTTRKDDQEETVRKRLVEYHQMTAPLIG
+##       YYSKEAEAGNTKYAKVDGTKPVAEVRADLEKILG
+## 
+## + attr: atom, xyz, seqres, helix, sheet,
+##         calpha, remark, call
+```

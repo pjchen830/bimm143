@@ -1,0 +1,197 @@
+---
+title: "Class 12: : Transcriptomics and the analysis of RNA-Seq data"
+author: "Patricia Chen A16138722"
+format: pdf
+editor: visual
+---
+
+Answers Q1-Q10
+
+## 1. Bioconductor and DESeq2 setup
+
+```{r}
+#install.packages("BiocManager")
+#BiocManager::install()
+
+# For this class, you'll also need DESeq2:
+#BiocManager::install("DESeq2")
+
+```
+
+```{r}
+library(BiocManager)
+library(DESeq2)
+```
+
+## 2. Import countData and colData
+
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", row.names=1)
+metadata <-  read.csv("airway_metadata.csv")
+
+head(counts)
+```
+
+```{r}
+head(metadata)
+```
+
+> Q1. How many genes are in this dataset?
+
+```{r}
+nrow(counts)
+```
+
+> Answer: There are 38694 genes in this dataset.
+
+> Q2. How many 'control' cell lines do we have?
+
+```{r}
+sum(metadata$dex == "control")
+```
+
+> Answer: There are four control cell lines in this dataset.
+
+## 3. Toy differential gene expression
+
+```{r}
+control <- metadata[metadata[,"dex"]=="control",]
+control.counts <- counts[ ,control$id]
+control.mean <- rowSums( control.counts )/4 
+head(control.mean)
+```
+
+```{r}
+library(dplyr)
+
+control <- metadata %>% filter(dex=="control")
+control.counts <- counts %>% select(control$id) 
+control.mean <- rowSums(control.counts)/4
+
+head(control.mean)
+```
+
+> Q3. How would you make the above code in either approach more robust?
+>
+> Answer:
+
+```{r}
+# Extract and summerize control samples
+# To find out where the control samples are, we need the metadata
+
+control <- metadata[metadata$dex == "control",]
+control.counts <- counts[ ,control$id]
+control.mean <- rowMeans(control.counts)
+head(control.mean)
+
+```
+
+> Q4. Follow the same procedure for the treated samples (i.e. calculate the mean per gene across drug treated samples and assign to a labeled vector called treated.mean)
+>
+> Answer:
+
+```{r}
+# Extract and summarize the treated (ie. drug) samples
+
+num.treated <- sum(metadata$dex =="treated")
+
+treated <- metadata[metadata$dex =="treated",]
+treated.counts <- counts[,treated$id]
+treated.mean <- rowMeans( treated.counts)
+head(treated.mean)
+```
+
+Store these results together in a new dataframe called 'meancounts'
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+colSums(meancounts)
+```
+
+> Q5 (a). Create a scatter plot showing the mean of the treated samples against the mean of the control samples. Your plot should look something like the following.
+>
+> Answer:
+
+```{r}
+#Let's make a plot to explore the results
+
+plot(meancounts[,1],meancounts[,2], xlab="Control", ylab="Treated")
+```
+
+> Q5 (b).You could also use the ggplot2 package to make this figure producing the plot below. What geom\_?() function would you use for this plot?
+>
+> Answer:
+
+```{r}
+library(ggplot2)
+
+p <- ggplot(meancounts) + 
+  aes(control.mean, treated.mean) +
+  geom_point()
+
+p + xlab("control.mean") + ylab("treated.mean")
+```
+
+> Q6. Try plotting both axes on a log scale. What is the argument to plot() that allows you to do this?
+>
+> Answer:
+
+```{r}
+# If you are using ggplot have a look at the function scale_x_continuous(trans="log2") and of course do the same for the y axis
+
+# We will make a log-log plot to draw out this skewed data and observe what't going on 
+
+plot(meancounts[,1],meancounts[,2], log = "xy", xlab="Log of Control", ylab="Log of Treated")
+
+```
+
+We often use log2 transformations when dealing with this sort of data
+
+```{r}
+log2(20/20)
+log2(40/20)
+log2(20/40)
+log2(80/20)
+
+#This log2 transformation has this nice property where there is no change the log2 value will be zero, and double the log2 value will be 1, halved it will be -1.
+
+```
+
+Let's add a log2 fold change to our results
+
+```{r}
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+head(meancounts)
+```
+
+```{r}
+zero.vals <- which(meancounts[,1:2]==0, arr.ind=TRUE)
+
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+> Q7. What is the purpose of the arr.ind argument in the which() function call above? Why would we then take the first column of the output and need to call the unique() function?
+>
+> Answer: The arr.ind argument functions to return array indices when a variable is true. The which() function tells which elements are true of a vector. We would call the unique() function to make sure that when the control and treatment means are both zero they would not be counted two times.
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+
+sum(up.ind==TRUE)
+sum(down.ind==TRUE)
+```
+
+> Q8. Using the up.ind vector above can you determine how many up regulated genes we have at the greater than 2 fc level?
+>
+> Answer: Yes, 250 unregulated genes are at greater than 2 fc level.
+
+> Q9. Using the down.ind vector above can you determine how many down regulated genes we have at the greater than 2 fc level?
+>
+> Answer: Yes, 367 down regulated genes are at greater than 2 fc level.
+
+> Q10. Do you trust these results? Why or why not?
+>
+> Answer: No, I do not trust these value as the results may not be statistically significant.
